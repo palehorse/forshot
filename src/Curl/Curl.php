@@ -45,6 +45,7 @@ class Curl
                 'message' => curl_error($this->curl),
             ];
         }
+        
         return $result;
     }
 

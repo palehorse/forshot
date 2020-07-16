@@ -8,7 +8,6 @@ use RuntimeException;
 
 class CurlHTTPClient implements HTTPClient
 {
-
     /**
      * Send a GET request
      * 
@@ -61,7 +60,7 @@ class CurlHTTPClient implements HTTPClient
     private function sendRequest($url, $method, array $data = [], array $headers = [])
     {   
         $curl = new Curl($url);
-        $options = $this->getCurlOptions($method, $headers, $data);
+        $options = $this->getCurlOptions($method, $this->formatHeaders($headers), $data);
         $curl->setOpt($options);
         $result = $curl->execute();
 
@@ -87,6 +86,23 @@ class CurlHTTPClient implements HTTPClient
     }
 
     /**
+     * Format the header data
+     * 
+     * @param array $headers
+     * @return array
+     */
+    private function formatHeaders(array $headers)
+    {
+        $formattedHeaders = [];
+
+        foreach ($headers as $name => $value) {
+            $formattedHeaders[] = sprintf('%s: %s', $name, $value);
+        }
+
+        return $formattedHeaders;
+    }
+
+    /**
      * Return curl options
      * 
      * @param string $method
@@ -98,26 +114,33 @@ class CurlHTTPClient implements HTTPClient
     {
         $options = [
             CURLOPT_CUSTOMREQUEST => strtoupper($method),
-            CURLOPT_HEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_BINARYTRANSFER => true,
             CURLOPT_HEADER => true,
+            CURLOPT_NOBODY => false,
         ];
 
         if (strtoupper($method) == 'POST') {
-            if (!empty($data['__file'] && !empty($data['__type']))) {
+            if (!empty($data['__file']) && !empty($data['__type'])) {
                 $options[CURLOPT_PUT] = true;
                 $options[CURLOPT_INFILE] = fopen($data['__file'], 'r');
                 $options[CURLOPT_INFILESIZE] = filesize($data['__file']);
+                $headers[] = 'Content-Length: ' . strlen(file_get_contents($data['__file']));
             } elseif (in_array('Content-Type: application/x-www-form-urlencoded', $headers)) {
                 $options[CURLOPT_POST] = true;
                 $options[CURLOPT_POSTFIELDS] = http_build_query($data);
+                $headers[] = 'Content-Length: ' . strlen(http_build_query($data));
             } else if (in_array('Content-Type: application/json', $headers)) {
                 $options[CURLOPT_POST] = true;
                 $options[CURLOPT_POSTFIELDS] = json_encode($data);
+                $headers[] = 'Content-Length: ' . strlen(json_encode($data));
+            } else {
+                $options[CURLOPT_POST] = true;
+                $options[CURLOPT_POSTFIELDS] = http_build_query($data);
+                $headers[] = 'Content-Length: ' . strlen(http_build_query($data));
             }
         }   
 
+        $options[CURLOPT_HTTPHEADER] = $headers;
         return $options;
     }
 }

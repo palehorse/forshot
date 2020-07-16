@@ -58,6 +58,15 @@ class HTTPResponse implements Response
     }
 
     /**
+     * Return all headers
+     * @return array
+     */
+    public function headers()
+    {
+        return $this->headers;
+    }
+
+    /**
      * Return the formatted data from the response
      * 
      * @return array|string 
@@ -66,7 +75,7 @@ class HTTPResponse implements Response
     {
         $data = json_decode($this->body, true);
 
-        return $data !== false ? $data : $this->body;
+        return !is_null($data) ? $data : $this->body;
     }
 
     /**
